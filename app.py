@@ -1,11 +1,10 @@
-
 import streamlit as st
 # from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.history_aware_retriever import create_history_aware_retriever
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
-# from langchain_chroma import Chroma
-from langchain_community.vectorstores import Chroma
+# from langchain_community.vectorstores import Chroma      # ❌ removed
+from langchain_community.vectorstores import FAISS         # ✅ use FAISS
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -15,17 +14,13 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 
+import csv, os
+from dotenv import load_dotenv
 
-import csv
 def log_interaction(session_id, question, answer, latency):
     with open("interactions.csv", "a", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([session_id, question, answer, latency])
-
-import os
-
-
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -54,23 +49,20 @@ if "store" in st.session_state and session_id in st.session_state.store:
 if api_key:
     llm = ChatGroq(groq_api_key=api_key, model_name="Gemma2-9b-It")
 
-    # Statefully manage chat history
     if "store" not in st.session_state:
         st.session_state.store = {}
 
     uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", accept_multiple_files=False)
 
-    # Process uploaded file
     if uploaded_file:
         documents = []
         tempPdf = f"temp_{uploaded_file.name}"
 
-        # Save uploaded file locally
         with open(tempPdf, "wb") as file:
-            if hasattr(uploaded_file, "getvalue"):  # Streamlit UploadedFile
+            if hasattr(uploaded_file, "getvalue"):
                 file.write(uploaded_file.getvalue())
                 file_name = uploaded_file.name
-            else:  # already bytes
+            else:
                 file.write(uploaded_file)
                 file_name = "uploaded_file.pdf"
 
@@ -78,19 +70,18 @@ if api_key:
         docs = loader.load()
         documents.extend(docs)
 
-        # Split and create embeddings
+        # ✅ Use FAISS instead of Chroma
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=5000, chunk_overlap=500)
         splits = text_splitter.split_documents(documents)
 
         if not splits:
             st.error("No text could be extracted from the PDF. Please upload a valid PDF.")
         else:
-            vectorstore = Chroma.from_documents(documents=splits, embedding=embeddings)
-            retriever = vectorstore.as_retriever()    
+            vectorstore = FAISS.from_documents(splits, embeddings)
+            retriever = vectorstore.as_retriever()
 
             os.remove(tempPdf)  # Clean up temporary file
 
-            # Contextualizing user queries
             contextualize_q_system_prompt = (
                 "Given a chat history and the latest user question "
                 "which might reference context in the chat history, "
@@ -109,7 +100,6 @@ if api_key:
 
             history_aware_retriever = create_history_aware_retriever(llm, retriever, contextualize_q_prompt)
 
-        # Answering system
         system_prompt = (
             "You are an assistant for question-answering tasks. "
             "Use the following pieces of retrieved context to answer "
@@ -144,7 +134,6 @@ if api_key:
             output_messages_key="answer"
         )
 
-        # User input
         user_input = st.text_input("Your question:")
         if user_input:
             import time
@@ -160,9 +149,6 @@ if api_key:
             st.success(f"Assistant: {response['answer']}")
             st.sidebar.write(f"Response time: {elapsed:.2f} sec")
 
-            # feedback = st.radio("Was this answer helpful?", ["👍 Yes", "👎 No"], index=None)
-            
-
             feedback = st.radio(
                 "Was this answer helpful?",
                 ["👍 Yes", "👎 No"],
@@ -170,25 +156,12 @@ if api_key:
                 key=f"feedback_{session_id}_{user_input}"
             )
 
-
             if feedback:
-                # # Log feedback
-                # with open("feedback_log.txt", "a", encoding="utf-8") as f:
-                #     f.write(f"{session_id},{user_input},{response['answer']},{feedback},{elapsed:.2f}\n")
-
-                # log_interaction(session_id, user_input, response["answer"], elapsed)
-
-                # If "No", generate an alternate response
                 if feedback == "👎 No":
                     with open("feedback_log.txt", "a", encoding="utf-8") as f:
                         f.write(f"{session_id},{user_input},{response['answer']},{feedback},{elapsed:.2f}\n")
-
                     log_interaction(session_id, user_input, response["answer"], elapsed)
                 else:
                     st.info("🙏 Thank you for your feedback!")
-
-
-
 else:
     st.warning("Please enter your Groq API Key in the sidebar.")
-
