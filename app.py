@@ -48,7 +48,7 @@ if "store" in st.session_state and session_id in st.session_state.store:
 # Check if API key is provided
 if api_key:
     # llm = ChatGroq(groq_api_key=api_key, model_name="Gemma2-9b-it")
-     llm = ChatGroq( groq_api_key=api_key, model="openai/gpt-oss-20b",temperature=0.1)
+    llm = ChatGroq( groq_api_key=api_key, model="openai/gpt-oss-20b",temperature=0.1)
 
     if "store" not in st.session_state:
         st.session_state.store = {}
@@ -166,5 +166,6 @@ if api_key:
                     st.info("🙏 Thank you for your feedback!")
 else:
     st.warning("Please enter your Groq API Key in the sidebar.")
+
 
 
