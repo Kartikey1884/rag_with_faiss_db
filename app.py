@@ -1,5 +1,5 @@
 import streamlit as st
-import torch
+
 # from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.history_aware_retriever import create_history_aware_retriever
 from langchain.chains.retrieval import create_retrieval_chain
@@ -27,7 +27,7 @@ load_dotenv()
 
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2",
-    model_kwargs={"device":torch.device("cpu")}
+    model_kwargs={"device":"cpu"}
 )
 
 # Streamlit App
@@ -167,6 +167,7 @@ if api_key:
                     st.info("🙏 Thank you for your feedback!")
 else:
     st.warning("Please enter your Groq API Key in the sidebar.")
+
 
 
 
