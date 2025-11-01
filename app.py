@@ -25,8 +25,8 @@ def log_interaction(session_id, question, answer, latency):
 load_dotenv()
 
 embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2",
-    model_kwargs={"device":torch.device("cpu")}
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+    # model_kwargs={"device":torch.device("cpu")
 )
 
 # Streamlit App
@@ -166,6 +166,7 @@ if api_key:
                     st.info("🙏 Thank you for your feedback!")
 else:
     st.warning("Please enter your Groq API Key in the sidebar.")
+
 
 
 
